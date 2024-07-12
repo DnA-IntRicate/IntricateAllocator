@@ -124,12 +124,14 @@ void ia_free(void* block)
     if (block == NULLPTR)
         return;
 
-    heap_chunk_t* chunk = &((heap_chunk_t*)block)[-1];
-    heap_chunk_t* old_first = g_heap_info.start;
-
-    g_heap_info.start = chunk;
-    chunk->next = old_first;
+    heap_chunk_t* chunk = (heap_chunk_t*)((char*)block - sizeof(heap_chunk_t));
     chunk->in_use = false;
-    chunk->prev_size = chunk->size;
-    chunk->size = 0;
+    chunk->next = g_heap_info.start; // Inserting the chunk into the free list
+    // Don't modify chunk sizes yet, eventually this should be done correctly to handle coalescing of chunks
+    // chunk->prev_size = chunk->size;
+    // chunk->size = 0;
+    g_heap_info.start = chunk;
+    g_heap_info.avail_size += chunk->size + sizeof(heap_chunk_t);
+
+    printf("Freed heap chunk %p of size: %zu bytes\n", chunk, chunk->size);
 }

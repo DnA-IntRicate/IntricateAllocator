@@ -65,4 +65,9 @@ IA_BEGIN_EXTERN_CPP
 
 IA_END_EXTERN_CPP
 
+    #ifdef __cplusplus
+        #define IA_RELEASE(ptr) ia_free(ptr); ptr = nullptr
+    #else
+        #define IA_RELEASE(ptr) ia_free(ptr); ptr = ((void*)0)
+    #endif // __cplusplus
 #endif // !INTRICATE_ALLOCATOR_H

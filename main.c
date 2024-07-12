@@ -3,46 +3,44 @@
 #include <stdlib.h>
 
 
-struct my_data_t
+typedef struct my_data_t
 {
     int num1;
     float num2;
-};
+} my_data_t;
 
+typedef struct vec2_t
+{
+    float x;
+    float y;
+} vec2_t;
 
 int main(int argc, char** argv)
 {
-    struct my_data_t* data = (struct my_data_t*)ia_alloc(sizeof(struct my_data_t));
-    data->num1 = 54;
-    data->num2 = (22.0f / 7.0f);
+    my_data_t* data1 = (my_data_t*)ia_alloc(sizeof(my_data_t));
+    data1->num1 = 54;
+    data1->num2 = (22.0f / 7.0f);
 
-    printf("Num 1: %d\n", data->num1);
-    printf("Num 2: %f\n", data->num2);
+    printf("(1) - Num 1: %d\n", data1->num1);
+    printf("(1) - Num 2: %f\n", data1->num2);
 
-    size_t arrSize = 32;
-    int* arr = (int*)ia_alloc(sizeof(int) * arrSize);
+    ia_free(data1);
+    printf("Num1: %d\n", data1->num1);
 
-    for (size_t i = 0; i < arrSize; ++i)
-        arr[i] = i;
+    vec2_t* vec = (my_data_t*)ia_alloc(sizeof(vec2_t));
+    vec->x = 2.0f;
+    vec->y = 1.5f;
 
-    for (size_t i = 0; i < arrSize; ++i)
-        printf("%d\n", arr[i]);
+    printf("(2) - Vec.x: %f\n", vec->x);
+    printf("(2) - Vec.y: %f\n", vec->y);
 
- //   ia_free(data);
- //   printf("Freed: %p\n", data);
- //   printf("Num 1: %d\n", data->num1);
+    // This causes a use-after-free issue since vec is assigned the exact same allocation that data1 was in.
+    // When trying to read data1->num1 we just get garbage back from it.
+    printf("(1)[After Free] - Num1: %d\n", data1->num1);
 
-    // This code only throws a read access violation when i hits 1017 (1018 + 1). This is the value of i for the pointer
-    // to exceed the bounds of the heap. This means the block returned from alloc isn't being properly truncated
-//    size_t i = 0;
-//    while (1)
-//    {
-//        printf("i is now : (%zu) at %d\n", i, *arr);
-//
-//        arr++;
-//        i++;
-//    }
-
+    // Using the IA_RELEASE macro it automatically sets the pointer to null to prevent this
+    IA_RELEASE(vec);
+    printf("Vec after IA_RELEASE: %p\n", vec);
 
     (void)getchar();
     return 0;
