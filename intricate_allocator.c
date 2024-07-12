@@ -14,8 +14,6 @@
     #endif // !WIN32_LEAN_AND_MEAN
 #endif // IA_PLATFORM_WINDOWS
 
-#define NULLPTR ((void*)0)
-
 typedef struct heap_chunk_t
 {
     size_t size;
@@ -72,18 +70,18 @@ void* ia_alloc(size_t size)
     if (size > g_heap_info.avail_size)
     {
         printf("No available heap space!");
-        return NULLPTR;
+        return NULL;
     }
 
     // Traverse the free-list for the first valid large-enough chunk from the head of the heap
     heap_chunk_t* chunk = g_heap_info.start;
-    while ((chunk != NULLPTR) && (size >= chunk->size) && chunk->in_use)
+    while ((chunk != NULL) && (size >= chunk->size) && chunk->in_use)
         chunk = chunk->next;
 
-    if (chunk == NULLPTR)
+    if (chunk == NULL)
     {
         printf("No suitable chunk found!");
-        return NULLPTR;
+        return NULL;
     }
 
     // When the chunk is found, split it if there is excess space
@@ -121,7 +119,7 @@ void* ia_alloc(size_t size)
 // This is going to end up causing a very fragmented heap.
 void ia_free(void* block)
 {
-    if (block == NULLPTR)
+    if (block == NULL)
         return;
 
     heap_chunk_t* chunk = (heap_chunk_t*)((char*)block - sizeof(heap_chunk_t));
