@@ -28,9 +28,9 @@ int main(int argc, char** argv)
     for (size_t i = 0; i < arrSize; ++i)
         printf("%d\n", arr[i]);
 
-    ia_free(data);
-    printf("Freed: %p\n", data);
-    printf("Num 1: %d\n", data->num1);
+ //   ia_free(data);
+ //   printf("Freed: %p\n", data);
+ //   printf("Num 1: %d\n", data->num1);
 
     // This code only throws a read access violation when i hits 1017 (1018 + 1). This is the value of i for the pointer
     // to exceed the bounds of the heap. This means the block returned from alloc isn't being properly truncated
@@ -43,15 +43,7 @@ int main(int argc, char** argv)
 //        i++;
 //    }
 
-    // Experiment:
-    int* number = malloc(sizeof(int));
-    *number = 91;
-    printf("Before free: %d\n", *number);
-    free(number);
-    printf("After free: %d\n", *number);
-
 
     (void)getchar();
-
     return 0;
 }
