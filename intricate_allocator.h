@@ -63,6 +63,8 @@ IA_BEGIN_EXTERN_CPP
 
     IA_API void ia_free(void* block);
 
+    IA_API void* ia_memset(void* block, int val, size_t range);
+
 IA_END_EXTERN_CPP
 
     #ifdef __cplusplus

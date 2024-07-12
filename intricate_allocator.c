@@ -4,14 +4,14 @@
 #include <stdbool.h>
 
 #ifndef NOMINMAX
-    #define NOMINMAX    
+#define NOMINMAX    
 #endif // !NOMINMAX
 
 #ifdef IA_PLATFORM_WINDOWS
-    #ifndef WIN32_LEAN_AND_MEAN
-        #define WIN32_LEAN_AND_MEAN
-        #include <Windows.h>
-    #endif // !WIN32_LEAN_AND_MEAN
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif // !WIN32_LEAN_AND_MEAN
 #endif // IA_PLATFORM_WINDOWS
 
 typedef struct heap_chunk_t
@@ -41,7 +41,7 @@ static void ia_heap_init(size_t size)
         fprintf(stderr, "Could not create file mapping object: %lu\n", GetLastError());
         return;
     }
-    
+
     void* heap_start = MapViewOfFile(heap_mapping, FILE_MAP_ALL_ACCESS, 0, 0, size);
     if (heap_start == NULL)
     {
@@ -132,4 +132,16 @@ void ia_free(void* block)
     g_heap_info.avail_size += chunk->size + sizeof(heap_chunk_t);
 
     printf("Freed heap chunk %p of size: %zu bytes\n", chunk, chunk->size);
+}
+
+void* ia_memset(void* block, int val, size_t range)
+{
+    if (block == NULL)
+        return NULL;
+
+    uint8_t* ptr = (uint8_t*)block;
+    for (; range > 0; --range)
+        *(ptr++) = (uint8_t)val;
+
+    return block;
 }

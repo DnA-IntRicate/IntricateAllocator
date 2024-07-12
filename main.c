@@ -34,6 +34,16 @@ int main(int argc, char** argv)
     printf("(2) - Vec.x: %f\n", vec->x);
     printf("(2) - Vec.y: %f\n", vec->y);
 
+    my_data_t* data2 = (my_data_t*)ia_alloc(sizeof(my_data_t)); // This is infinite looping here, must be fixed!
+    data2->num1 = 21;
+    data2->num2 = 456.00453213f;
+
+    printf("(2) - Num 1: %d\n", data2->num1);
+    printf("(2) - Num 2: %f\n", data2->num2);
+    ia_memset(data2, 0, sizeof(my_data_t));
+    printf("(2)[After ia_memset] - Num 1: %d\n", data1->num1);
+    printf("(2)[After ia_memset] - Num 2: %f\n", data1->num2);
+
     // This causes a use-after-free issue since vec is assigned the exact same allocation that data1 was in.
     // When trying to read data1->num1 we just get garbage back from it.
     printf("(1)[After Free] - Num1: %d\n", data1->num1);
