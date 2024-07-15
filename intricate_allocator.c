@@ -4,15 +4,18 @@
 #include <stdbool.h>
 
 #ifndef NOMINMAX
-#define NOMINMAX    
+    #define NOMINMAX    
 #endif // !NOMINMAX
 
 #ifdef IA_PLATFORM_WINDOWS
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#endif // !WIN32_LEAN_AND_MEAN
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+        #include <Windows.h>
+        #pragma comment(lib, "onecore.lib")
+    #endif // !WIN32_LEAN_AND_MEAN
 #endif // IA_PLATFORM_WINDOWS
+
+#define IA_HEAP_PAGE_SIZE 4096ull
 
 typedef struct heap_chunk_t
 {
@@ -30,44 +33,75 @@ struct heap_info_t
 } g_heap_info;
 
 
-// TODO: Return type for this function?
-static void ia_heap_init(size_t size)
+static bool ia_heap_init(size_t init_size)
 {
     printf("Initializing...\n");
-    printf("Heap size: %zu bytes\n", size);
+    printf("Heap size: %zu bytes\n", init_size);
 
-    HANDLE heap_mapping = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, size, NULL);
-    if (heap_mapping == NULL)
-    {
-        fprintf(stderr, "Could not create file mapping object: %lu\n", GetLastError());
-        return;
-    }
-
-    void* heap_start = MapViewOfFile(heap_mapping, FILE_MAP_ALL_ACCESS, 0, 0, size);
+    // When extending use heap_start as the base address
+    void* heap_start = VirtualAlloc2(GetCurrentProcess(), NULL, init_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE, NULL, 0);
     if (heap_start == NULL)
     {
-        fprintf(stderr, "Could not map view of file: %lu\n", GetLastError());
-        CloseHandle(heap_mapping);
-        return;
+        fprintf(stderr, "Failed to initialize heap: %#x\n", GetLastError());
+        return false;
     }
 
     heap_chunk_t* first = (heap_chunk_t*)heap_start;
-    first->size = size - sizeof(heap_chunk_t*);
+    first->size = init_size - sizeof(heap_chunk_t*);
     first->in_use = false;
-    first->next = first;
+    first->next = NULL; // first
 
     memset(&g_heap_info, 0, sizeof(struct heap_info_t));
     g_heap_info.start = first;
     g_heap_info.head = first;
     g_heap_info.avail_size = first->size;
+
+    return true;
+}
+
+static bool ia_heap_extend(size_t extension_size)
+{
+    printf("Extending heap by: %zu bytes\n", extension_size);
+
+    void* extension_start = VirtualAlloc2(GetCurrentProcess(), NULL, extension_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE, NULL, 0);
+    if (extension_start == NULL)
+    {
+        fprintf(stderr, "Failed to extend heap: %#x\n", GetLastError());
+        return false;
+    }
+
+    // Initialize the new chunk
+    heap_chunk_t* extension = (heap_chunk_t*)extension_start;
+    extension->size = extension_size - sizeof(heap_chunk_t);
+    extension->in_use = false;
+
+    // Add the new chunk to the end of the free list
+    heap_chunk_t* last_chunk = g_heap_info.start;    // Use head or start here?
+    while (last_chunk->next) 
+        last_chunk = last_chunk->next;
+    
+    last_chunk->next = extension;
+    extension->next = NULL;
+    g_heap_info.avail_size += extension_size;
+
+    return true;
 }
 
 void* ia_alloc(size_t size)
 {
-    // If the avail size is 0, initialize the heap, (this should be changed to request for more memory)
-    if (g_heap_info.avail_size == 0)
-        ia_heap_init(4096);
+    if (!g_heap_info.start)
+        ia_heap_init(IA_HEAP_PAGE_SIZE);
+    
+    if ((g_heap_info.avail_size == 0) || (g_heap_info.avail_size < size))
+    {
+        size_t extension = IA_HEAP_PAGE_SIZE;
+        while (extension < size)
+            extension += IA_HEAP_PAGE_SIZE;
 
+        if (!ia_heap_extend(extension))
+            return NULL;
+    }
+ 
     // Returns null if the requested allocation size exceeds the heaps available size.
     if (size > g_heap_info.avail_size)
     {

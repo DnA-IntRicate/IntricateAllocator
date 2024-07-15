@@ -31,8 +31,8 @@ int main(int argc, char** argv)
     vec->x = 2.0f;
     vec->y = 1.5f;
 
-    printf("(2) - Vec.x: %f\n", vec->x);
-    printf("(2) - Vec.y: %f\n", vec->y);
+    printf("Vec.x: %f\n", vec->x);
+    printf("Vec.y: %f\n", vec->y);
 
     my_data_t* data2 = (my_data_t*)ia_alloc(sizeof(my_data_t)); // This is infinite looping here, must be fixed!
     data2->num1 = 21;
@@ -50,8 +50,8 @@ int main(int argc, char** argv)
 
     // Check if vec's data is still intact after allocating data2.
     printf("Vec:\n");
-    printf("(2) - Vec.x: %f\n", vec->x);
-    printf("(2) - Vec.y: %f\n", vec->y);
+    printf("Vec.x: %f\n", vec->x);
+    printf("Vec.y: %f\n", vec->y);
 
     // Using the IA_RELEASE macro it automatically sets the pointer to null to prevent this.
     IA_RELEASE(vec);
