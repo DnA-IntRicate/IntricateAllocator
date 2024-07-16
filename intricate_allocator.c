@@ -187,8 +187,10 @@ void* ia_memset(void* block, int val, size_t range)
     if (block == NULL)
         return NULL;
 
-    uint8_t* ptr = (uint8_t*)block;
-    for (; range > 0; --range)
+    if (range == 0)
+        return block;
+
+    for (uint8_t* ptr = (uint8_t*)block; range > 0; --range)
         *(ptr++) = (uint8_t)val;
 
     return block;
