@@ -45,7 +45,7 @@ static bool ia_heap_init(size_t init_size)
         fprintf(stderr, "Failed to initialize heap: %#x\n", GetLastError());
         return false;
     }
-
+    
     heap_chunk_t* first = (heap_chunk_t*)heap_start;
     first->size = init_size - sizeof(heap_chunk_t*);
     first->in_use = false;

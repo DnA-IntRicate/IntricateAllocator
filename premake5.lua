@@ -3,14 +3,15 @@ include "Vendor/premake/customization/solutionitems.lua"
 OUT_DIR = "%{wks.location}/bin/build/%{cfg.system}/%{cfg.architecture}/%{cfg.buildcfg}/IntricateAllocator"
 INT_DIR = "%{wks.location}/bin/intermediate/%{cfg.system}/%{cfg.architecture}/%{cfg.buildcfg}/%{prj.name}"
 
+-- This path is relative to the premake scripts for each Example/Test, not relative to this premake script
+INTRICATE_ALLOCATOR_H_INCLUDE = "../../IntricateAllocator/src/include"
+
 workspace "IntricateAllocator"
     architecture "x86_64"
-    startproject "intricate_allocator"
 
     configurations
     {
         "Debug",
-        "Dev",
         "Release"
     }
 
@@ -70,17 +71,6 @@ workspace "IntricateAllocator"
             "_DEBUG"
         }
 
-    filter "configurations:Dev"
-        runtime "Release"
-        symbols "On"
-        optimize "On"
-
-        defines
-        {
-            "IA_DEV",
-            "NDEBUG",
-        }
-
     filter "configurations:Release"
         runtime "Release"
         symbols "Off"
@@ -100,33 +90,5 @@ workspace "IntricateAllocator"
             "NoIncrementalLink"
         }
 
--- PROJECT: intricate_allocator
-project "intricate_allocator"
-    kind "ConsoleApp"
-    language "C"
-    cdialect "C17"
-
-    debugdir(OUT_DIR)
-    targetdir(OUT_DIR)
-    objdir(INT_DIR)
-
-    files
-    {
-        "./*.h",
-        "./*.c"
-    }
-
-    includedirs
-    {
-        "."
-    }
-
-    filter "system:windows"
-        systemversion "latest"
-
-    filter "system:linux"
-        systemversion "latest"
-
-    filter "system:macosx"
-        systemversion "latest"
-        cppdialect "C++latest"
+include "IntricateAllocator"
+include "Tests"
