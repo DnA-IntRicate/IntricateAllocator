@@ -17,6 +17,14 @@
 
 #define IA_HEAP_PAGE_SIZE 4096ull
 
+#ifdef IA_DEBUG
+    #define IA_DEBUG_PRINT(...) printf(__VA_ARGS__)
+    #define IA_DEBUG_ERROR(...) fprintf(stderr, __VA_ARGS__)
+#else
+    #define IA_DEBUG_PRINT(...)
+    #define IA_DEBUG_ERROR(...)
+#endif // IA_DEBUG
+
 typedef struct heap_chunk_t
 {
     size_t size;
@@ -35,14 +43,14 @@ struct heap_info_t
 
 static bool ia_heap_init(size_t init_size)
 {
-    printf("Initializing...\n");
-    printf("Heap size: %zu bytes\n", init_size);
+    IA_DEBUG_PRINT("Initializing...\n");
+    IA_DEBUG_PRINT("Heap size: %zu bytes\n", init_size);
 
     // When extending use heap_start as the base address
     void* heap_start = VirtualAlloc2(GetCurrentProcess(), NULL, init_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE, NULL, 0);
     if (heap_start == NULL)
     {
-        fprintf(stderr, "Failed to initialize heap: %#x\n", GetLastError());
+        IA_DEBUG_ERROR("Failed to initialize heap: %#x\n", GetLastError());
         return false;
     }
     
@@ -66,7 +74,7 @@ static bool ia_heap_extend(size_t extension_size)
     void* extension_start = VirtualAlloc2(GetCurrentProcess(), NULL, extension_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE, NULL, 0);
     if (extension_start == NULL)
     {
-        fprintf(stderr, "Failed to extend heap: %#x\n", GetLastError());
+        IA_DEBUG_ERROR("Failed to extend heap: %#x\n", GetLastError());
         return false;
     }
 
@@ -105,7 +113,7 @@ void* ia_alloc(size_t size)
     // Returns null if the requested allocation size exceeds the heaps available size.
     if (size > g_heap_info.avail_size)
     {
-        printf("No available heap space!");
+        IA_DEBUG_ERROR("No available heap space!");
         return NULL;
     }
 
@@ -116,7 +124,7 @@ void* ia_alloc(size_t size)
 
     if (chunk == NULL)
     {
-        printf("No suitable chunk found!");
+        IA_DEBUG_ERROR("No suitable chunk found!");
         return NULL;
     }
 
@@ -147,7 +155,7 @@ void* ia_alloc(size_t size)
     // The current chunk should be marked as in use so that it doesn't get unintentionally overwritten
     // in future calls of this function or before the chunk is freed.
     chunk->in_use = true;
-    printf("Found heap chunk %p of size: %zu bytes\n", chunk, chunk->size);
+    IA_DEBUG_PRINT("Found heap chunk %p of size: %zu bytes\n", chunk, chunk->size);
 
     // Set the head of the heap equal to the next available chunk found previously
     g_heap_info.head = chunk->next;
@@ -179,7 +187,7 @@ void ia_free(void* block)
     g_heap_info.head = chunk;
     g_heap_info.avail_size += chunk->size + sizeof(heap_chunk_t);
 
-    printf("Freed heap chunk %p of size: %zu bytes\n", chunk, chunk->size);
+    IA_DEBUG_PRINT("Freed heap chunk %p of size: %zu bytes\n", chunk, chunk->size);
 }
 
 void* ia_memset(void* block, int val, size_t range)
