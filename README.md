@@ -1,2 +1,2 @@
 # IntricateAllocator
-Custom heap memory allocator written in C (Win32)
+A custom WIP heap-memory allocator written in C17 (Win32)
