@@ -28,25 +28,46 @@
 typedef struct heap_chunk_t
 {
     size_t size;
-    size_t prev_size;
+    //size_t prev_size;
     bool in_use;
     struct heap_chunk_t* next;
 } heap_chunk_t;
 
+// Ehhhh?
+heap_chunk_t* g_free_list = NULL;
+
+// Do we need this?
 struct heap_info_t
 {
-    heap_chunk_t* start;
+//    heap_chunk_t* start;
     heap_chunk_t* head;
     size_t avail_size;
 } g_heap_info;
 
+
+static heap_chunk_t* ia_os_alloc(size_t size)
+{
+    size_t chunk_size = size + sizeof(heap_chunk_t);
+
+    heap_chunk_t* chunk = (heap_chunk_t*)VirtualAlloc2(GetCurrentProcess(), NULL, chunk_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE, NULL, 0);
+    if (chunk == NULL)
+    {
+        IA_DEBUG_ERROR("Failed to allocate new chunk: %#x\n", GetLastError());
+        return NULL;
+    }
+
+    chunk->size = size;
+    chunk->in_use = false;
+    chunk->next = NULL;
+
+    return chunk;
+}
 
 static bool ia_heap_init(size_t init_size)
 {
     IA_DEBUG_PRINT("Initializing...\n");
     IA_DEBUG_PRINT("Heap size: %zu bytes\n", init_size);
 
-    // When extending use heap_start as the base address
     void* heap_start = VirtualAlloc2(GetCurrentProcess(), NULL, init_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE, NULL, 0);
     if (heap_start == NULL)
     {
@@ -57,10 +78,9 @@ static bool ia_heap_init(size_t init_size)
     heap_chunk_t* first = (heap_chunk_t*)heap_start;
     first->size = init_size - sizeof(heap_chunk_t*);
     first->in_use = false;
-    first->next = NULL; // first
+    first->next = NULL;
 
     memset(&g_heap_info, 0, sizeof(struct heap_info_t));
-    g_heap_info.start = first;
     g_heap_info.head = first;
     g_heap_info.avail_size = first->size;
 
@@ -84,7 +104,7 @@ static bool ia_heap_extend(size_t extension_size)
     extension->in_use = false;
 
     // Add the new chunk to the end of the free list
-    heap_chunk_t* last_chunk = g_heap_info.start;    // Use head or start here?
+    heap_chunk_t* last_chunk = g_heap_info.head;    // Use head or start here?
     while (last_chunk->next) 
         last_chunk = last_chunk->next;
     
@@ -97,7 +117,7 @@ static bool ia_heap_extend(size_t extension_size)
 
 void* ia_alloc(size_t size)
 {
-    if (!g_heap_info.start)
+    if (!g_heap_info.head)
         ia_heap_init(IA_HEAP_PAGE_SIZE);
     
     if ((g_heap_info.avail_size == 0) || (g_heap_info.avail_size < size))
