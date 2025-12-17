@@ -34,8 +34,6 @@
     #endif // !WIN32_LEAN_AND_MEAN
 #endif // IA_PLATFORM_WINDOWS
 
-#define IA_HEAP_PAGE_SIZE 4096ull
-
 #ifdef IA_DEBUG
     #define IA_DEBUG_PRINT(...) printf(__VA_ARGS__)
     #define IA_DEBUG_ERROR(...) fprintf(stderr, __VA_ARGS__)
@@ -52,6 +50,9 @@ typedef struct heap_chunk_t
     struct heap_chunk_t* next;
 } heap_chunk_t;
 
+#define IA_HEAP_PAGE_SIZE 4096ull
+#define IA_CHUNK_SIZE sizeof(heap_chunk_t)
+
 // Ehhhh?
 heap_chunk_t* g_free_list = NULL;
 
@@ -67,6 +68,7 @@ struct heap_info_t
 static heap_chunk_t* ia_os_alloc(size_t size)
 {
     size_t chunk_size = size + sizeof(heap_chunk_t);
+    // size_t page_size = IA_HEAP_PAGE_SIZE * (size_t)(chunk_size / IA_HEAP_PAGE_SIZE);
 
     heap_chunk_t* chunk = (heap_chunk_t*)VirtualAlloc2(GetCurrentProcess(), NULL, chunk_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE, NULL, 0);
     if (chunk == NULL)
@@ -75,6 +77,7 @@ static heap_chunk_t* ia_os_alloc(size_t size)
         return NULL;
     }
 
+   // g_heap_info.avail_size += size;
     chunk->size = size;
     chunk->in_use = false;
     chunk->next = NULL;
@@ -95,7 +98,7 @@ static bool ia_heap_init(size_t init_size)
     }
     
     heap_chunk_t* first = (heap_chunk_t*)heap_start;
-    first->size = init_size - sizeof(heap_chunk_t*);
+    first->size = init_size - sizeof(heap_chunk_t);
     first->in_use = false;
     first->next = NULL;
 
@@ -123,7 +126,7 @@ static bool ia_heap_extend(size_t extension_size)
     extension->in_use = false;
 
     // Add the new chunk to the end of the free list
-    heap_chunk_t* last_chunk = g_heap_info.head;    // Use head or start here?
+    heap_chunk_t* last_chunk = g_heap_info.head;
     while (last_chunk->next) 
         last_chunk = last_chunk->next;
     
@@ -137,7 +140,13 @@ static bool ia_heap_extend(size_t extension_size)
 void* ia_alloc(size_t size)
 {
     if (!g_heap_info.head)
-        ia_heap_init(IA_HEAP_PAGE_SIZE);
+    {
+        g_heap_info.head = ia_os_alloc(size);
+        g_heap_info.avail_size += size;
+
+        //   ia_heap_init(IA_HEAP_PAGE_SIZE);
+        return (void*)(((char*)g_heap_info.head) + IA_CHUNK_SIZE);
+    }
     
     if ((g_heap_info.avail_size == 0) || (g_heap_info.avail_size < size))
     {
@@ -145,11 +154,24 @@ void* ia_alloc(size_t size)
         while (extension < size)
             extension += IA_HEAP_PAGE_SIZE;
 
-        if (!ia_heap_extend(extension))
-            return NULL;
+        // This chunk here is WAYY Too huge. It must be split.
+        // TODO: Only do this IF it is too huge.
+        heap_chunk_t* chunk = ia_os_alloc(extension);
+        chunk->size = extension - size - IA_CHUNK_SIZE; // Ehhhhhhhh
+        // There is some confusion here with splitting the chunk sizes. Fix this
+
+        heap_chunk_t* next_chunk = (heap_chunk_t*)(((char*)chunk) + IA_CHUNK_SIZE + size);
+        next_chunk->size = size - IA_CHUNK_SIZE;    // Is this right?????
+
+
+        chunk->next = (heap_chunk_t*)(((char*)chunk) + IA_CHUNK_SIZE + size);
+        chunk->in_use = true;
+
+        return (void*)(((char*)chunk) + IA_CHUNK_SIZE);
     }
  
     // Returns null if the requested allocation size exceeds the heaps available size.
+    // TODO: Is this block needed?
     if (size > g_heap_info.avail_size)
     {
         IA_DEBUG_ERROR("No available heap space!");
